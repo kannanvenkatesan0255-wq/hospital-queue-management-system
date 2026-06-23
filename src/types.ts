@@ -35,6 +35,8 @@ export interface Patient {
   calledAt: string | null;
   completedAt: string | null;
   consultationMinutes: number | null;
+  rating?: number | null;
+  feedback?: string | null;
 }
 
 export interface Doctor {

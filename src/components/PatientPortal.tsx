@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Patient, Doctor } from '../types';
-import { Search, Compass, Activity, ShieldCheck, Heart, User, Hourglass, Smartphone, RefreshCw, Sparkles } from 'lucide-react';
+import { Search, Compass, Activity, ShieldCheck, Heart, User, Hourglass, Smartphone, RefreshCw, Sparkles, Star, CheckCircle, MessageSquare } from 'lucide-react';
+import { SmartPatientTimeline } from './SmartPatientTimeline';
+import { api } from '../services/api';
 
 interface PatientPortalProps {
   patients: Patient[];
@@ -13,6 +15,29 @@ export function PatientPortal({ patients, doctors, avgConsultationTime }: Patien
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTicket, setActiveTicket] = useState<Patient | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  
+  // Feedback System States
+  const [ratingVal, setRatingVal] = useState<number>(5);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSaved, setFeedbackSaved] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTicket) return;
+    setSubmittingFeedback(true);
+    try {
+      await api.updatePatient(activeTicket.id, {
+        rating: ratingVal,
+        feedback: feedbackText
+      });
+      setFeedbackSaved(true);
+    } catch (err: any) {
+      console.error('Error saving patient feedback:', err);
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
 
   // Auto-refresh selected ticket details if general patient array updates
   useEffect(() => {
@@ -250,11 +275,69 @@ export function PatientPortal({ patients, doctors, avgConsultationTime }: Patien
                   </p>
                 </div>
               ) : (
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center space-y-1">
-                  <p className="text-md font-bold text-[#6B7280]">📋 Consultation Completed</p>
-                  <p className="text-xs text-[#6B7280]">
-                    Thank you. If prescription files are pending, please wait at main pharmacy output counter.
-                  </p>
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
+                  <div className="text-center space-y-1">
+                    <p className="text-md font-bold text-[#111827]">📋 Consultation Completed</p>
+                    <p className="text-xs text-[#6B7280]">
+                      Your diagnostic queue is complete. If prescriptions are pending, proceed to pharmacy counter.
+                    </p>
+                  </div>
+
+                  {activeTicket.rating || feedbackSaved ? (
+                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 text-center space-y-1">
+                       <div className="flex justify-center text-amber-500 gap-1">
+                         {Array.from({ length: activeTicket.rating || ratingVal }).map((_, i) => (
+                           <Star key={i} size={15} className="fill-amber-400 stroke-amber-500" />
+                         ))}
+                       </div>
+                       <p className="text-[11px] font-bold text-emerald-800">★ Feedback Registered - Outpatient Verified</p>
+                       {(activeTicket.feedback || feedbackText) && (
+                         <p className="text-[10px] text-slate-500 italic font-medium px-4">
+                           "{activeTicket.feedback || feedbackText}"
+                         </p>
+                       )}
+                     </div>
+                  ) : (
+                    <form onSubmit={handleFeedbackSubmit} className="space-y-4 pt-1.5 border-t border-slate-100">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block text-center">
+                          Rate Your Care Experience
+                        </label>
+                        <div className="flex justify-center gap-1.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              type="button"
+                              key={star}
+                              onClick={() => setRatingVal(star)}
+                              className="text-amber-400 hover:scale-110 transition cursor-pointer"
+                            >
+                              <Star 
+                                size={22} 
+                                className={star <= ratingVal ? "fill-amber-400 stroke-amber-500" : "text-slate-300"} 
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <textarea
+                          placeholder="Please supply any clinical feedback to assist neural optimization..."
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          className="w-full min-h-[50px] p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-[#111827] focus:outline-hidden focus:border-[#14B8A6]"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submittingFeedback}
+                        className="w-full py-2 bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-600 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition disabled:opacity-50"
+                      >
+                        {submittingFeedback ? 'Transmitting...' : 'Submit Patient Feedback'}
+                      </button>
+                    </form>
+                  )}
                 </div>
               )}
 
@@ -282,6 +365,11 @@ export function PatientPortal({ patients, doctors, avgConsultationTime }: Patien
                     {new Date(activeTicket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
+              </div>
+
+              {/* Patient live care timeline progress tracker */}
+              <div className="mt-2 text-left">
+                <SmartPatientTimeline patient={activeTicket} />
               </div>
 
               {/* Dynamic Realistic Barcode */}

@@ -7,6 +7,8 @@ import { WaitingTVBoard } from './components/WaitingTVBoard';
 import { PatientPortal } from './components/PatientPortal';
 import { DoctorPortal } from './components/DoctorPortal';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
+import { AICommandCenter } from './components/AICommandCenter';
+import { announceTokenEvent } from './utils/voiceAnnouncer';
 import {
   Activity,
   Users,
@@ -23,7 +25,8 @@ import {
   Plus,
   RefreshCw,
   Clock,
-  Sparkles
+  Sparkles,
+  Cpu
 } from 'lucide-react';
 
 interface ToastMessage {
@@ -35,12 +38,17 @@ interface ToastMessage {
 
 export default function App() {
   // Navigation active route state
-  // 'patient' | 'tv' | 'doctor' | 'receptionist' | 'analytics'
-  const [activeTab, setActiveTab] = useState<'patient' | 'tv' | 'doctor' | 'receptionist' | 'analytics'>('patient');
+  // 'patient' | 'tv' | 'doctor' | 'receptionist' | 'analytics' | 'ai'
+  const [activeTab, setActiveTab] = useState<'patient' | 'tv' | 'doctor' | 'receptionist' | 'analytics' | 'ai'>('patient');
 
   // Master lists
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const doctorsRef = React.useRef<Doctor[]>([]);
+
+  useEffect(() => {
+    doctorsRef.current = doctors;
+  }, [doctors]);
   const [settings, setSettings] = useState<QueueSettings>({
     id: 'global_settings',
     clinicName: 'St. Jude Health Center',
@@ -164,6 +172,12 @@ export default function App() {
 
     socket.on('toast:notify', (data: { message: string; type: ToastMessage['type'] }) => {
       triggerToast(data.message, data.type);
+    });
+
+    socket.on('patient:called', (data: { patient: Patient }) => {
+      const associatedDoc = doctorsRef.current.find(d => d.id === data.patient.doctorId);
+      const room = associatedDoc ? associatedDoc.room : 'Cabin';
+      announceTokenEvent(data.patient.tokenNumber, data.patient.doctorName, room);
     });
 
     // Periodically poll MongoDB connection status
@@ -296,6 +310,18 @@ export default function App() {
           >
             <Activity className="w-4 h-4" />
             Analytics Board
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ai')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+              activeTab === 'ai' 
+                ? 'bg-[#F1F5F9] text-[#2563EB]' 
+                : 'text-[#6B7280] hover:bg-[#F8FAFC] hover:text-[#111827]'
+            }`}
+          >
+            <Cpu className="w-4 h-4" />
+            AI Command Center
           </button>
         </nav>
 
@@ -503,6 +529,12 @@ export default function App() {
           >
             Charts
           </button>
+          <button
+            onClick={() => setActiveTab('ai')}
+            className={`text-[10px] py-1.5 rounded-lg transition-all ${activeTab === 'ai' ? 'bg-[#E1F5FE] text-[#2563EB] font-black' : 'text-[#6B7280]'}`}
+          >
+            AI HUD
+          </button>
         </div>
 
         {/* FLOATING REALTIME TOAST STACK */}
@@ -590,6 +622,16 @@ export default function App() {
                 doctors={doctors} 
                 patients={patients} 
                 onRefresh={loadSnapshot} 
+              />
+            </div>
+          )}
+
+          {activeTab === 'ai' && (
+            <div className="animate-fade-in max-w-7xl mx-auto">
+              <AICommandCenter 
+                patients={patients} 
+                doctors={doctors} 
+                analytics={analytics} 
               />
             </div>
           )}

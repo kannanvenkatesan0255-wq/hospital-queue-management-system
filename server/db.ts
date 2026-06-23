@@ -36,6 +36,8 @@ const PatientSchema = new mongoose.Schema({
   calledAt: { type: String, default: null },
   completedAt: { type: String, default: null },
   consultationMinutes: { type: Number, default: null },
+  rating: { type: Number, default: null },
+  feedback: { type: String, default: null },
 });
 
 const DoctorSchema = new mongoose.Schema({
