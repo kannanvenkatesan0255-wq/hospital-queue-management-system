@@ -1,0 +1,6 @@
+{
+  "name": "Queue Cure",
+  "description": "High-performance real-time healthcare queue management platform with receptionist, patient, and doctor portals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
